@@ -1,0 +1,19 @@
+{
+  "name": "splitwise-roulette",
+  "version": "1.0.0",
+  "description": "Slack bot for selecting the winner of highest splitwise debt",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "server": "node --experimental-modules index.js"
+  },
+  "type": "module",
+  "author": "Qizot",
+  "license": "MIT",
+  "dependencies": {
+    "body-parser": "^1.20.0",
+    "express": "^4.18.1",
+    "node-fetch": "^3.2.4",
+    "qs": "^6.10.3"
+  }
+}
