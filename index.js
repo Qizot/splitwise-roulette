@@ -2,7 +2,7 @@ import express from "express";
 import bodyParser from "body-parser";
 
 import { verifySlackSignature } from "./src/middleware/slack.js";
-import { getThreadRepliesUsers, getUserRealName, sendDebtSummaryMessage } from "./src/slack.js";
+import { getThreadRepliesUsers, getUsersData, sendDebtSummaryMessage } from "./src/slack.js";
 import { fetchUsersDebts } from "./src/splitwise.js";
 
 const app = express();
@@ -28,15 +28,21 @@ app.post("/slack-challenge", verifySlackSignature, async (req, res) => {
     if (users === null) {
       return res.send("No users, bye!")
     }
-    const realNames = (await Promise.all(users.map(user => getUserRealName(user)))).filter(name => name !== null && name !== undefined)
+    const usersData = (await Promise.all(users.map(user => getUsersData(user)))).filter(({email}) => email !== null && email !== undefined)
+    
+    const emails = usersData.map(({email}) => email)
     
     const userDebts = await fetchUsersDebts()
-    
-    const presentUserDebts = userDebts.filter(userDebt => realNames.includes(userDebt.name))
-    
+    const presentUserDebts = userDebts
+      .filter(userDebt => emails.includes(userDebt.email))
+
     presentUserDebts.sort((a, b) => a.debt - b.debt)
     
-    await sendDebtSummaryMessage(channel, thread_ts, presentUserDebts)
+    await sendDebtSummaryMessage(channel, thread_ts, presentUserDebts.map(userDebt => {
+      const u = usersData.find(({email}) => email === userDebt.email);
+
+      return {...userDebt, name: u.name}
+    }))
   }
   
 

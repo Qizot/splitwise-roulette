@@ -12,13 +12,13 @@ function slackRequest(token, path) {
   });
 }
 
-export async function getUserRealName(userId, token = TOKEN) {
+export async function getUsersData(userId, token = TOKEN) {
   try {
     const response = await slackRequest(token, `users.info?user=${userId}`);
 
     const data = await response.json();
 
-    return data.user.real_name;
+    return {name: data.user.real_name, email: data.user.profile.email};
   } catch (error) {
     console.log(error);
 
@@ -76,7 +76,7 @@ export async function sendDebtSummaryMessage(channel, threadTs, userDebts, token
         fields: [
           {
             type: "mrkdwn",
-            text: `*Zwyciężca:*\n ${topDebt.name} *${topDebt.debt.toFixed(2)}zł*`,
+            text: `*Zwycięzca:*\n ${topDebt.name} *${topDebt.debt.toFixed(2)}zł*`,
           },
         ],
       },

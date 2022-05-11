@@ -20,7 +20,7 @@ export async function fetchUsersDebts(token = TOKEN, groupName = 'Chińczyk ') {
         const targetGroup = data.groups.find(group => group.name === groupName);
         
         const users = targetGroup.members.map(member => ({
-            name: `${member.first_name} ${member.last_name}`,
+            email: member.email,
             // fetch just the first balance, if there is none then leave 0 debt
             debt: member.balance[0] !== undefined ? Number(member.balance[0].amount) : 0,
         }))
