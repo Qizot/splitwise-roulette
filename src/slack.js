@@ -1,4 +1,4 @@
-import fetch from "node-fetch";
+const fetch = require("node-fetch")
 
 const BASE = "https://slack.com/api/";
 const TOKEN = process.env.SLACK_TOKEN;
@@ -12,7 +12,7 @@ function slackRequest(token, path) {
   });
 }
 
-export async function getUsersData(userId, token = TOKEN) {
+async function getUsersData(userId, token = TOKEN) {
   try {
     const response = await slackRequest(token, `users.info?user=${userId}`);
 
@@ -27,7 +27,7 @@ export async function getUsersData(userId, token = TOKEN) {
 }
 
 // returns a list of user ids that took part in given thread conversation
-export async function getThreadRepliesUsers(
+async function getThreadRepliesUsers(
   channelId,
   threadTs,
   token = TOKEN
@@ -48,7 +48,7 @@ export async function getThreadRepliesUsers(
   }
 }
 
-export async function sendDebtSummaryMessage(channel, threadTs, userDebts, token = TOKEN) {
+async function sendDebtSummaryMessage(channel, threadTs, userDebts, token = TOKEN) {
   if (userDebts.length < 1) return null
   
   const [topDebt] = userDebts
@@ -99,3 +99,6 @@ export async function sendDebtSummaryMessage(channel, threadTs, userDebts, token
     body: JSON.stringify(payload)
   });
 }
+
+module.exports = { getUsersData, getThreadRepliesUsers, sendDebtSummaryMessage }
+
