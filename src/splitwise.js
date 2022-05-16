@@ -1,16 +1,16 @@
-import fetch from 'node-fetch'
+const fetch = require("node-fetch")
 
 
-const SPLITWISE_URI = 'https://secure.splitwise.com/api/v3.0/get_groups'
+const SPLITWISE_URI = "https://secure.splitwise.com/api/v3.0/get_groups"
 const TOKEN = process.env.SPLITWISE_TOKEN 
 
-export async function fetchUsersDebts(token = TOKEN, groupName = 'Chińczyk ') {
+async function fetchUsersDebts(token = TOKEN, groupName = "Chińczyk ") {
     try {
         const result = await fetch(SPLITWISE_URI, {
             method: "GET",
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
             }
         })
 
@@ -32,3 +32,5 @@ export async function fetchUsersDebts(token = TOKEN, groupName = 'Chińczyk ') {
         return []
     }
 }
+
+module.exports = { fetchUsersDebts }

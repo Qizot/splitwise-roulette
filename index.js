@@ -1,18 +1,40 @@
-import express from "express";
-import bodyParser from "body-parser";
+const functions = require('@google-cloud/functions-framework')
+const { verifySlackSignature } = require("./src/middleware/slack.js")
+const { getThreadRepliesUsers, getUsersData, sendDebtSummaryMessage } = require("./src/slack.js")
+const { fetchUsersDebts } = require("./src/splitwise.js")
 
-import { verifySlackSignature } from "./src/middleware/slack.js";
-import { getThreadRepliesUsers, getUsersData, sendDebtSummaryMessage } from "./src/slack.js";
-import { fetchUsersDebts } from "./src/splitwise.js";
 
-const app = express();
+function bundleHandlers(handlers) {
+  return async (req, res) =>  {
+    let executeNext = true
+    
+    const runNext = () => executeNext = true
+    
+    for (const handler of handlers) {
+      if (executeNext) {
+        executeNext = false
 
-app.use(bodyParser.text({type: '*/*'}));
+        if (handler.constructor.name === 'AsyncFunction') {
+          await handler(req, res, runNext)
+        } else {
+          handler(req, res, runNext)
+        }
+        
+        continue
+      } 
 
-const port = 8080;
+      break
+    }
+  }
+}
 
-app.post("/slack-challenge", verifySlackSignature, async (req, res) => {
-  const { challenge, type, event } = JSON.parse(req.body);
+function registerCloudFunction(name, ...handlers)  {
+  functions.http(name, bundleHandlers(handlers))
+}
+
+
+async function handleRequest(req, res) {
+  const { challenge, type, event } = req.body;
 
   // required for app url validation
   if (type === "url_verification") {
@@ -28,7 +50,8 @@ app.post("/slack-challenge", verifySlackSignature, async (req, res) => {
     if (users === null) {
       return res.send("No users, bye!")
     }
-    const usersData = (await Promise.all(users.map(user => getUsersData(user)))).filter(({email}) => email !== null && email !== undefined)
+    const usersData = (await Promise.all(users.map(user => getUsersData(user))))
+      .filter(({email}) => email !== null && email !== undefined)
     
     const emails = usersData.map(({email}) => email)
     
@@ -43,10 +66,12 @@ app.post("/slack-challenge", verifySlackSignature, async (req, res) => {
 
       return {...userDebt, name: u.name}
     }))
+    
+    return res.status(200).send("ok")
+  } else {
+    return res.status(400).send("unhandled event")
   }
   
-
-  return res.send("Go away...");
-});
-
-app.listen(port, () => console.log(`Listening on port ${port}`));
+}
+  
+registerCloudFunction("slack-handler", verifySlackSignature, handleRequest)

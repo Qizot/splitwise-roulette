@@ -1,22 +1,20 @@
-import crypto from 'crypto'
+const crypto = require('crypto')
 
 // verifies the request hmac signature
-export function verifySlackSignature(req, res, next) {
+function verifySlackSignature(req, res, next) {
   const {
-    'x-slack-signature': signature,
-    'x-slack-request-timestamp': timestamp
+    "x-slack-signature": signature,
+    "x-slack-request-timestamp": timestamp
   } = req.headers
 
-  const requestBody = req.body
+  const requestBody = new TextDecoder().decode(req.rawBody)
   const secret = process.env.SLACK_SIGNING_SECRET;
 
   const base = `v0:${timestamp}:${requestBody}`
-  const calculcatedSignature = 'v0=' + crypto.createHmac('sha256', secret)
-    .update(base, 'utf8')
-    .digest('hex')
-
-
-
+  const calculcatedSignature = "v0=" + crypto.createHmac('sha256', secret)
+    .update(base, "utf8")
+    .digest("hex")
+  
   if (crypto.timingSafeEqual(
     Buffer.from(signature, 'utf8'), 
     Buffer.from(calculcatedSignature, 'utf8'))) {
@@ -26,3 +24,5 @@ export function verifySlackSignature(req, res, next) {
     return res.status(400).send("Verification failed")
   }
 }
+
+module.exports = { verifySlackSignature }
