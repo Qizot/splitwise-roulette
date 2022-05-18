@@ -4,6 +4,7 @@ const {
   getThreadRepliesUsers,
   getUsersData,
   sendDebtSummaryMessage,
+  getBotMentionMessageUsers,
 } = require("./src/slack.js");
 const { fetchUsersDebts } = require("./src/splitwise.js");
 
@@ -46,23 +47,34 @@ function findSplitwiseUser(splitwiseUser, slackUsers) {
 
 async function handleRequest(req, res) {
   const { challenge, type, event } = req.body;
+  
+
 
   // required for app url validation
   if (type === "url_verification") {
     return res.send(challenge);
   }
 
+
   // we only want to react on the bot being metntioned
   if (type === "event_callback" && event.type === "app_mention") {
     const { channel, thread_ts } = event;
 
-    const users = await getThreadRepliesUsers(channel, thread_ts);
+    // get users that have replied to the thread that the bot has been mentioned in
+    const threadRepliesUsers = await getThreadRepliesUsers(channel, thread_ts)
 
-    if (users === null) {
+    // get users mentioned in the same mention as the bot
+    const botMentionsMessageUsers = getBotMentionMessageUsers(req.body.event.blocks)
+    
+    const users = [...new Set([...threadRepliesUsers, ...botMentionsMessageUsers])];
+    
+    if (users.length === 0) {
       return res.send("No users, bye!");
     }
+
     const slackUsers = (
       await Promise.all(users.map((user) => getUsersData(user)))
+
     ).filter(({ email }) => email !== null && email !== undefined);
 
     const userDebts = await fetchUsersDebts();

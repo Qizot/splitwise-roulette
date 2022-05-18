@@ -47,8 +47,21 @@ async function getThreadRepliesUsers(channelId, threadTs, token = TOKEN) {
   } catch (error) {
     console.log(error);
 
-    return null;
+    return [];
   }
+}
+
+function getBotMentionMessageUsers(blocks)  {
+    return blocks
+    .filter(({type}) => type === "rich_text")
+    .map(({elements}) => 
+      elements
+      .filter(({type: elementType}) => elementType === "rich_text_section")
+      .map(({elements}) => elements)
+    )
+    .flat(10)
+    .filter(({type}) => type === "user")
+    .map(({user_id}) => user_id)
 }
 
 async function sendDebtSummaryMessage(
@@ -116,4 +129,5 @@ module.exports = {
   getUsersData,
   getThreadRepliesUsers,
   sendDebtSummaryMessage,
+  getBotMentionMessageUsers
 };
