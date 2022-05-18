@@ -1,4 +1,4 @@
-const fetch = require("node-fetch")
+const fetch = require("node-fetch");
 
 const BASE = "https://slack.com/api/";
 const TOKEN = process.env.SLACK_TOKEN;
@@ -18,7 +18,14 @@ async function getUsersData(userId, token = TOKEN) {
 
     const data = await response.json();
 
-    return {name: data.user.real_name, email: data.user.profile.email};
+    return {
+      email: data.user.profile.email,
+      real_name: data.user.real_name,
+      real_name_normalized: data.user.profile.real_name_normalized,
+      display_name: data.user.profile.display_name,
+      display_name_normalized: data.user.profile.display_name_normalized,
+      dot_name: data.user.name,
+    };
   } catch (error) {
     console.log(error);
 
@@ -27,11 +34,7 @@ async function getUsersData(userId, token = TOKEN) {
 }
 
 // returns a list of user ids that took part in given thread conversation
-async function getThreadRepliesUsers(
-  channelId,
-  threadTs,
-  token = TOKEN
-) {
+async function getThreadRepliesUsers(channelId, threadTs, token = TOKEN) {
   try {
     const response = await slackRequest(
       token,
@@ -44,21 +47,41 @@ async function getThreadRepliesUsers(
   } catch (error) {
     console.log(error);
 
-    return null;
+    return [];
   }
 }
 
-async function sendDebtSummaryMessage(channel, threadTs, userDebts, token = TOKEN) {
-  if (userDebts.length < 1) return null
-  
-  const [topDebt] = userDebts
-  
+function getBotMentionMessageUsers(blocks)  {
+    return blocks
+    .filter(({type}) => type === "rich_text")
+    .map(({elements}) => 
+      elements
+      .filter(({type: elementType}) => elementType === "rich_text_section")
+      .map(({elements}) => elements)
+    )
+    .flat(10)
+    .filter(({type}) => type === "user")
+    .map(({user_id}) => user_id)
+}
+
+async function sendDebtSummaryMessage(
+  channel,
+  threadTs,
+  userDebts,
+  token = TOKEN
+) {
+  if (userDebts.length < 1) return null;
+
+  const [topDebt] = userDebts;
+
   let i = 0;
-  const ranking = userDebts.map(userDebt => {
-    i += 1;
-    return `${i}. ${userDebt.name} *${userDebt.debt.toFixed(2)}zł*\n`
-  }).join("")
-  
+  const ranking = userDebts
+    .map((userDebt) => {
+      i += 1;
+      return `${i}. ${userDebt.name} *${userDebt.debt.toFixed(2)}zł*\n`;
+    })
+    .join("");
+
   const payload = {
     channel,
     thread_ts: threadTs,
@@ -76,7 +99,9 @@ async function sendDebtSummaryMessage(channel, threadTs, userDebts, token = TOKE
         fields: [
           {
             type: "mrkdwn",
-            text: `*Zwycięzca:*\n ${topDebt.name} *${topDebt.debt.toFixed(2)}zł*`,
+            text: `*Zwycięzca:*\n ${topDebt.name} *${topDebt.debt.toFixed(
+              2
+            )}zł*`,
           },
         ],
       },
@@ -89,16 +114,20 @@ async function sendDebtSummaryMessage(channel, threadTs, userDebts, token = TOKE
       },
     ],
   };
-  
+
   await fetch(BASE + "chat.postMessage", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json;charset=utf-8'
+      "Content-Type": "application/json;charset=utf-8",
     },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 }
 
-module.exports = { getUsersData, getThreadRepliesUsers, sendDebtSummaryMessage }
-
+module.exports = {
+  getUsersData,
+  getThreadRepliesUsers,
+  sendDebtSummaryMessage,
+  getBotMentionMessageUsers
+};
