@@ -19,6 +19,7 @@ async function getUsersData(userId, token = TOKEN) {
     const data = await response.json();
 
     return {
+      user_id: userId,
       email: data.user.profile.email,
       real_name: data.user.real_name,
       real_name_normalized: data.user.profile.real_name_normalized,
@@ -99,7 +100,7 @@ async function sendDebtSummaryMessage(
         fields: [
           {
             type: "mrkdwn",
-            text: `*Zwycięzca:*\n ${topDebt.name} *${topDebt.debt.toFixed(
+            text: `*Zwycięzca (<@${topDebt.user_id}>):*\n ${topDebt.name} *${topDebt.debt.toFixed(
               2
             )}zł*`,
           },

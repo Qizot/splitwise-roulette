@@ -86,7 +86,7 @@ async function handleRequest(req, res) {
           return undefined;
         }
 
-        return { ...splitwiseUser, name: mappedUser.display_name };
+        return { ...splitwiseUser, name: mappedUser.real_name, user_id: mappedUser.user_id };
       })
       .filter((splitwiseUser) => splitwiseUser !== undefined);
 
