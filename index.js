@@ -57,14 +57,18 @@ async function handleRequest(req, res) {
 
 
   // we only want to react on the bot being metntioned
-  if (type === "event_callback" && event.type === "app_mention") {
+  if (type === "event_callback" && (event.type === "app_mention" || event.type === "message")) {
     const { channel, thread_ts } = event;
+    
+    let threadRepliesUsers = [];
+    let botMentionsMessageUsers = [];
 
     // get users that have replied to the thread that the bot has been mentioned in
-    const threadRepliesUsers = await getThreadRepliesUsers(channel, thread_ts)
-
+    if (event.type === "app_mention") {
+      threadRepliesUsers = await getThreadRepliesUsers(channel, thread_ts)
+    }
     // get users mentioned in the same mention as the bot
-    const botMentionsMessageUsers = getBotMentionMessageUsers(req.body.event.blocks)
+    botMentionsMessageUsers = getBotMentionMessageUsers(event.blocks)
     
     const users = [...new Set([...threadRepliesUsers, ...botMentionsMessageUsers])];
     
