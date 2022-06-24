@@ -41,4 +41,13 @@ async function fetchUsersDebts(token = TOKEN, groupName = "Chińczyk ") {
   }
 }
 
-module.exports = { fetchUsersDebts };
+function findSplitwiseUser(splitwiseUser, slackUsers) {
+  return slackUsers.find((slackUser) => {
+    return (
+      Object.values(slackUser).includes(splitwiseUser.name) ||
+      splitwiseUser.email === slackUser.email
+    );
+  });
+}
+
+module.exports = { fetchUsersDebts, findSplitwiseUser };

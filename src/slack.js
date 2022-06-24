@@ -1,3 +1,4 @@
+const { parse, isBefore, addDays } = require("date-fns");
 const fetch = require("node-fetch");
 
 const BASE = "https://slack.com/api/";
@@ -34,6 +35,19 @@ async function getUsersData(userId, token = TOKEN) {
   }
 }
 
+async function getBotId(token = TOKEN) {
+  try {
+    const response = await slackRequest(token, `auth.test`);
+
+    const data = await response.json();
+    return data.user_id;
+  } catch (error) {
+    console.log(error);
+
+    return null;
+  }
+}
+
 // returns a list of user ids that took part in given thread conversation
 async function getThreadRepliesUsers(channelId, threadTs, token = TOKEN) {
   try {
@@ -52,17 +66,85 @@ async function getThreadRepliesUsers(channelId, threadTs, token = TOKEN) {
   }
 }
 
-function getBotMentionMessageUsers(blocks)  {
-    return blocks
-    .filter(({type}) => type === "rich_text")
-    .map(({elements}) => 
+function getTimeFromMessage(blocks) {
+  const hour = blocks
+    .filter(({ type }) => type === "rich_text")
+    .map(({ elements }) =>
       elements
-      .filter(({type: elementType}) => elementType === "rich_text_section")
-      .map(({elements}) => elements)
+        .filter(({ type: elementType }) => elementType === "rich_text_section")
+        .map(({ elements }) => elements)
     )
     .flat(10)
-    .filter(({type}) => type === "user")
-    .map(({user_id}) => user_id)
+    .filter(({ type }) => type === "text")
+    .map(({ text }) => {
+      return text.match(/([0-9]|0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]/g)?.[0];
+    })
+    .filter((hour) => hour !== undefined)[0];
+
+  if (!hour) return undefined;
+
+  let date = parse(hour, "HH:mm", new Date());
+  if (isBefore(date, new Date())) date = addDays(date, 1);
+
+  return date;
+}
+
+function getBotMentionMessageUsers(blocks) {
+  return blocks
+    .filter(({ type }) => type === "rich_text")
+    .map(({ elements }) =>
+      elements
+        .filter(({ type: elementType }) => elementType === "rich_text_section")
+        .map(({ elements }) => elements)
+    )
+    .flat(10)
+    .filter(({ type }) => type === "user")
+    .map(({ user_id }) => user_id);
+}
+
+async function getUsersFromEvent(event) {
+  const { channel, thread_ts } = event;
+  let threadRepliesUsers = [];
+
+  // get users that have replied to the thread that the bot has been mentioned in
+  if (event.type === "app_mention") {
+    threadRepliesUsers = await getThreadRepliesUsers(channel, thread_ts);
+  }
+  // get users mentioned in the same mention as the bot
+  const botMentionsMessageUsers = getBotMentionMessageUsers(event.blocks);
+
+  const users = [
+    ...new Set([...threadRepliesUsers, ...botMentionsMessageUsers]),
+  ];
+
+  return users;
+}
+
+async function scheduleEvent(event, date, botId, token = TOKEN) {
+  const unixTimestamp = Math.floor(date.getTime() / 1000);
+  const { channel, thread_ts } = event;
+
+  const payload = {
+    channel: botId,
+    text: JSON.stringify(event),
+    post_at: unixTimestamp,
+  };
+
+  const response = await fetch(BASE + "chat.scheduleMessage", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json;charset=utf-8",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (response.ok) {
+    return await sendScheduleConfirmation(channel, thread_ts, date);
+  } else {
+    const json = await response.json();
+    console.log(`Error scheduling message ${JSON.stringify(json, null, 2)}`);
+  }
 }
 
 async function sendDebtSummaryMessage(
@@ -100,9 +182,9 @@ async function sendDebtSummaryMessage(
         fields: [
           {
             type: "mrkdwn",
-            text: `*Zwycięzca (<@${topDebt.user_id}>):*\n ${topDebt.name} *${topDebt.debt.toFixed(
-              2
-            )}zł*`,
+            text: `*Zwycięzca (<@${topDebt.user_id}>):*\n ${
+              topDebt.name
+            } *${topDebt.debt.toFixed(2)}zł*`,
           },
         ],
       },
@@ -126,9 +208,36 @@ async function sendDebtSummaryMessage(
   });
 }
 
+async function sendScheduleConfirmation(
+  channel,
+  threadTs,
+  date,
+  token = TOKEN
+) {
+  const payload = {
+    channel,
+    thread_ts: threadTs,
+    text: `Zaplanowano na ${date.toLocaleString("pl-pl")}`,
+  };
+
+  await fetch(BASE + "chat.postMessage", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json;charset=utf-8",
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
 module.exports = {
   getUsersData,
   getThreadRepliesUsers,
+  getBotId,
+  getTimeFromMessage,
   sendDebtSummaryMessage,
-  getBotMentionMessageUsers
+  getBotMentionMessageUsers,
+  getUsersFromEvent,
+  scheduleEvent,
+  sendScheduleConfirmation,
 };
