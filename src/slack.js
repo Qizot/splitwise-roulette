@@ -76,7 +76,7 @@ async function getThreadRepliesUsers(channelId, threadTs, token = TOKEN) {
 function getOffsetToPoland(date = new Date()) {
   const offsetPoland = getTimezoneOffset("Europe/Warsaw", date);
   const offsetServer = date.getTimezoneOffset() * -60 * 1000;
-  const offset = offsetPoland - offsetServer;
+  const offset = offsetServer - offsetPoland;
 
   return offset;
 }
