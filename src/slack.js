@@ -122,6 +122,7 @@ async function getUsersFromEvent(event) {
 
 async function scheduleEvent(event, date, botId, token = TOKEN) {
   const unixTimestamp = Math.floor(date.getTime() / 1000);
+  const { channel, thread_ts } = event;
 
   const payload = {
     channel: botId,
@@ -129,7 +130,7 @@ async function scheduleEvent(event, date, botId, token = TOKEN) {
     post_at: unixTimestamp,
   };
 
-  return await fetch(BASE + "chat.scheduleMessage", {
+  const response = await fetch(BASE + "chat.scheduleMessage", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -137,6 +138,13 @@ async function scheduleEvent(event, date, botId, token = TOKEN) {
     },
     body: JSON.stringify(payload),
   });
+
+  if (response.ok) {
+    return await sendScheduleConfirmation(channel, thread_ts, date);
+  } else {
+    const json = await response.json();
+    console.log(`Error scheduling message ${JSON.stringify(json, null, 2)}`);
+  }
 }
 
 async function sendDebtSummaryMessage(
@@ -200,6 +208,28 @@ async function sendDebtSummaryMessage(
   });
 }
 
+async function sendScheduleConfirmation(
+  channel,
+  threadTs,
+  date,
+  token = TOKEN
+) {
+  const payload = {
+    channel,
+    thread_ts: threadTs,
+    text: `Scheduled on ${date.toLocaleString("pl-pl")}`,
+  };
+
+  await fetch(BASE + "chat.postMessage", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json;charset=utf-8",
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
 module.exports = {
   getUsersData,
   getThreadRepliesUsers,
@@ -209,4 +239,5 @@ module.exports = {
   getBotMentionMessageUsers,
   getUsersFromEvent,
   scheduleEvent,
+  sendScheduleConfirmation,
 };
