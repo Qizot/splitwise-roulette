@@ -1,4 +1,11 @@
-const { parse, isBefore, addDays } = require("date-fns");
+const {
+  parse,
+  isBefore,
+  addDays,
+  addMilliseconds,
+  subMilliseconds,
+} = require("date-fns");
+const { getTimezoneOffset } = require("date-fns-tz");
 const fetch = require("node-fetch");
 
 const BASE = "https://slack.com/api/";
@@ -66,6 +73,14 @@ async function getThreadRepliesUsers(channelId, threadTs, token = TOKEN) {
   }
 }
 
+function getOffsetToPoland(date = new Date()) {
+  const offsetPoland = getTimezoneOffset("Europe/Warsaw", date);
+  const offsetServer = date.getTimezoneOffset() * -60 * 1000;
+  const offset = offsetPoland - offsetServer;
+
+  return offset;
+}
+
 function getTimeFromMessage(blocks) {
   const hour = blocks
     .filter(({ type }) => type === "rich_text")
@@ -85,6 +100,10 @@ function getTimeFromMessage(blocks) {
 
   let date = parse(hour, "HH:mm", new Date());
   if (isBefore(date, new Date())) date = addDays(date, 1);
+
+  const offset = getOffsetToPoland(date);
+
+  date = addMilliseconds(date, offset);
 
   return date;
 }
@@ -140,7 +159,8 @@ async function scheduleEvent(event, date, botId, token = TOKEN) {
   });
 
   if (response.ok) {
-    return await sendScheduleConfirmation(channel, thread_ts, date);
+    const offsetDate = subMilliseconds(date, getOffsetToPoland(date));
+    return await sendScheduleConfirmation(channel, thread_ts, offsetDate);
   } else {
     const json = await response.json();
     console.log(`Error scheduling message ${JSON.stringify(json, null, 2)}`);
