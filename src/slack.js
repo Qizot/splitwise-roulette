@@ -217,7 +217,7 @@ async function sendScheduleConfirmation(
   const payload = {
     channel,
     thread_ts: threadTs,
-    text: `Scheduled on ${date.toLocaleString("pl-pl")}`,
+    text: `Zaplanowano na ${date.toLocaleString("pl-pl")}`,
   };
 
   await fetch(BASE + "chat.postMessage", {
