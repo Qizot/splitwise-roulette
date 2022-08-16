@@ -11,7 +11,7 @@ function parseName(firstName, lastName) {
   return `${firstName} ${lastName}`;
 }
 
-async function fetchUsersDebts(token = TOKEN, groupName = "Chińczyk ") {
+async function fetchUsersDebts(token = TOKEN, groupName = "Chińczyk 2.0") {
   try {
     const result = await fetch(SPLITWISE_URI, {
       method: "GET",
